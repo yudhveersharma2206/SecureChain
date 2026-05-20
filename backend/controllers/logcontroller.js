@@ -5,81 +5,91 @@
  *  - Verifying blockchain integrity
  *  - Fetching full blockchain
  */
-const Log = require("../models/log");
-const { generateHash } = require("../utils/hashUtil");
-const { validateAction, validateUser } = require("../utils/validation");
-
+const Log = require("../models/Log");
+const crypto = require("crypto");
 /**
  * Adds a new block to the blockchain.
  * Generates SHA-256 hash including previousHash linking.
  */
+const { generateHash } = require("../utils/hashUtil");
+const { addLogToBlockchain } = require("../utils/blockchain");
+const { validateAction, validateUser } = require("../utils/validation");
+
+
 const addLog = async (req, res) => {
-    try {
-        const { action, user } = req.body;
+try {
+    const { action, user } = req.body;
 
-        // Validation
-        if (!action || !user) {
-            return res.status(400).json({
-                success: false,
-                message: "Action and User are required"
-            });
-        }
-
-        if (!validateAction(action)) {
-            return res.status(400).json({
-                success: false,
-                message: "Action must be between 1-200 characters"
-            });
-        }
-
-        if (!validateUser(user)) {
-            return res.status(400).json({
-                success: false,
-                message: "User must be between 1-100 characters"
-            });
-        }
-
-        // Get last block
-        const lastBlock = await Log.findOne().sort({ index: -1 });
-
-        // Calculate new block properties
-        const index = lastBlock ? lastBlock.index + 1 : 1;
-        const previousHash = lastBlock ? lastBlock.hash : "0";
-        const logId = Date.now().toString();
-        const ip = req.ip || req.connection.remoteAddress || "unknown";
-        const timestamp = new Date().toISOString();
-
-        // Generate hash
-        const logData = index + logId + action + user + ip + timestamp + previousHash;
-        const hash = generateHash(logData);
-
-        // Create and save new block
-        const newBlock = new Log({
-            index,
-            logId,
-            action,
-            user,
-            ipAddress: ip,
-            timestamp,
-            previousHash,
-            hash
-        });
-
-        await newBlock.save();
-
-        res.status(201).json({
-            success: true,
-            message: "Block added successfully",
-            block: newBlock
-        });
-
-    } catch (error) {
-        res.status(500).json({
-            success: false,
-            message: "Failed to add block",
-            error: error.message
-        });
+    if (!action || !user) {
+    return res.status(400).json({
+        success: false,
+        message: "Action and User are required"
+    });
     }
+
+    if (!validateAction(action)) {
+    return res.status(400).json({
+        success: false,
+        message: "Action must be between 1-200 characters"
+    });
+    }
+
+    if (!validateUser(user)) {
+    return res.status(400).json({
+        success: false,
+        message: "User must be between 1-100 characters"
+    });
+    }
+
+    // 🔥 Get last block from Supabase
+   const lastBlock = await Log.findOne().sort({ index: -1 });
+
+const index = lastBlock ? lastBlock.index + 1 : 1;
+
+const previousHash = lastBlock ? lastBlock.hash : "0";
+
+const logId = Date.now().toString();
+
+const ip = req.ip || "unknown";
+
+const timestamp = new Date().toISOString();
+
+const logData =
+  index + logId + action + user + ip + timestamp + previousHash;
+
+const hash = generateHash(logData);
+
+// blockchain transaction
+const txHash = await addLogToBlockchain(hash);
+
+// save in MongoDB
+const newBlock = await Log.create({
+  index,
+  logId,
+  action,
+  user,
+    ipAddress: ip,
+  timestamp,
+  previousHash,
+  hash,
+});
+
+res.status(201).json({
+  success: true,
+  message: "Block added successfully",
+  data: {
+  block: newBlock,
+  hash: newBlock.hash,
+  txHash,
+},
+});
+} catch (error) {
+    res.status(500).json({
+        success: false,
+        message: "Failed to add block",
+        error: error.message
+    });
+}
 };
 
 /**
@@ -88,7 +98,7 @@ const addLog = async (req, res) => {
  */
 const verifyLog = async (req, res) => {
     try {
-        const blocks = await Log.find().sort({ index: 1 });
+    const blocks = await Log.find().sort({ index: 1 });
 
         if (blocks.length === 0) {
             return res.json({
@@ -189,76 +199,47 @@ const getAllBlocks = async (req, res) => {
  * Get a single block by ID
  */
 const getBlockById = async (req, res) => {
-    try {
-        const block = await Log.findById(req.params.id);
+  try {
+    const block = await Log.findById(req.params.id);
 
-        if (!block) {
-            return res.status(404).json({
-                success: false,
-                message: "Block not found"
-            });
-        }
-
-        res.json({
-            success: true,
-            block
-        });
-
-    } catch (error) {
-        res.status(500).json({
-            success: false,
-            message: "Error fetching block",
-            error: error.message
-        });
+    if (!block) {
+      return res.status(404).json({
+        success: false,
+        message: "Block not found",
+      });
     }
-};
 
+    res.json({
+      success: true,
+      blocks: block,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: "Error fetching block",
+      error: error.message,
+    });
+  }
+};
 /**
  * Filter blocks by user, action, or date range
  */
 const filterBlocks = async (req, res) => {
-    try {
-        const { user, action, startDate, endDate, page = 1, limit = 50 } = req.query;
+  try {
+    const blocks = await Log.find().sort({ timestamp: -1 });
 
-        const filter = {};
-
-        if (user) filter.user = new RegExp(user, "i");
-        if (action) filter.action = new RegExp(action, "i");
-
-        if (startDate || endDate) {
-            filter.timestamp = {};
-            if (startDate) filter.timestamp.$gte = new Date(startDate);
-            if (endDate) filter.timestamp.$lte = new Date(endDate);
-        }
-
-        const skip = (Math.max(1, parseInt(page)) - 1) * Math.min(100, parseInt(limit));
-        const totalBlocks = await Log.countDocuments(filter);
-        const blocks = await Log.find(filter)
-            .sort({ index: -1 })
-            .skip(skip)
-            .limit(Math.min(100, parseInt(limit)))
-            .lean();
-
-        res.json({
-            success: true,
-            pagination: {
-                total: totalBlocks,
-                page: parseInt(page),
-                limit: parseInt(limit),
-                pages: Math.ceil(totalBlocks / Math.min(100, parseInt(limit)))
-            },
-            blocks
-        });
-
-    } catch (error) {
-        res.status(500).json({
-            success: false,
-            message: "Error filtering blocks",
-            error: error.message
-        });
-    }
+    res.json({
+      success: true,
+      blocks,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: "Error filtering blocks",
+      error: error.message,
+    });
+  }
 };
-
 module.exports = {
     addLog,
     verifyLog,

@@ -1,5 +1,6 @@
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "./context/AuthContext";
+import { Web3Provider } from "./web3/Web3Context";
 import Navbar from "./components/Navbar";
 import ProtectedRoute from "./components/ProtectedRoute";
 import Dashboard from "./pages/Dashboard";
@@ -16,7 +17,8 @@ function App() {
   return (
     <Router>
       <AuthProvider>
-        <Navbar />
+        <Web3Provider>
+          <Navbar />
         <Routes>
           {/* Public Route */}
           <Route path="/login" element={<Login />} />
@@ -85,6 +87,7 @@ function App() {
         <footer className="footer">
           © 2026 Yudhveer Sharma | SecureChain - Blockchain Audit System
         </footer>
+        </Web3Provider>
       </AuthProvider>
     </Router>
   );

@@ -74,6 +74,7 @@ function Login() {
       }
 
       const { token, user } = response.data;
+      console.log("LOGIN RESPONSE:", response.data);
 
       // Store in auth context with token and user data
       login(user, token);

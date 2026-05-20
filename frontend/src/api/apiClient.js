@@ -28,7 +28,13 @@ const apiCall = async (endpoint, options = {}) => {
       headers,
     });
 
-    const data = await response.json();
+    let data;
+
+try {
+  data = await response.json();
+} catch (err) {
+  throw new Error("Invalid server response");
+}
 
     // Check if token is expired (401 response)
     if (response.status === 401 && data.message?.includes("Token expired")) {
@@ -90,30 +96,30 @@ export const authAPI = {
  */
 export const blockchainAPI = {
   addLog: (action, user) =>
-    apiCall("/add-log", {
+    apiCall("/api/log/add", {
       method: "POST",
       body: JSON.stringify({ action, user }),
     }),
 
   getAllBlocks: (page = 1, limit = 50) =>
-    apiCall(`/blocks?page=${page}&limit=${limit}`, {
+    apiCall(`/api/log/blocks?page=${page}&limit=${limit}`, {
       method: "GET",
     }),
 
   filterBlocks: (filters) => {
     const params = new URLSearchParams(filters).toString();
-    return apiCall(`/blocks/filter?${params}`, {
+    return apiCall(`/api/log/blocks/filter?${params}`, {
       method: "GET",
     });
   },
 
   getBlockById: (id) =>
-    apiCall(`/block/${id}`, {
+    apiCall(`/api/log/block/${id}`, {
       method: "GET",
     }),
 
   verifyBlockchain: () =>
-    apiCall("/verify", {
+    apiCall("/api/log/verify", {
       method: "GET",
     }),
 };
@@ -126,4 +132,11 @@ export const healthCheck = () =>
     method: "GET",
   });
 
-export default { authAPI, blockchainAPI, healthCheck };
+  
+const apiClient = {
+  authAPI,
+  blockchainAPI,
+  healthCheck,
+};
+
+export default apiClient;

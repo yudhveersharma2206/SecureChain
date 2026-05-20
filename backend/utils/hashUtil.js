@@ -3,7 +3,7 @@ const crypto = require("crypto");
 const generateHash = (logData) => {
     return crypto
         .createHash("sha256")
-        .update(logData)
+        .update(JSON.stringify(logData))
         .digest("hex");
 };
 

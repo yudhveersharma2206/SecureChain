@@ -10,11 +10,16 @@ const {
     filterBlocks
 } = require("../controllers/logcontroller");
 
+router.post("/add", authMiddleware, roleMiddleware("admin"), addLog);
+
+// Get all blocks (no auth required for Dashboard)
+router.get("/all", getAllBlocks);
+
 // Add log (block) - Admin only
 router.post("/add-log", authMiddleware, roleMiddleware("admin"), addLog);
 
-// Get all blocks
-router.get("/blocks", authMiddleware, getAllBlocks);
+// Get all blocks (with auth required)
+router.get("/blocks", getAllBlocks);
 
 // Filter blocks by criteria
 router.get("/blocks/filter", authMiddleware, filterBlocks);

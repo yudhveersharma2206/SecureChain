@@ -1,8 +1,6 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
-import { blockchainAPI } from "../api/apiClient";
-
 /**
  * Dashboard Component
  * Displays blockchain overview with real-time block updates
@@ -14,18 +12,77 @@ function Dashboard() {
   const [selectedBlock, setSelectedBlock] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [scLogs, setScLogs] = useState([]);
+  const [scError, setScError] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const containerRef = useRef(null);
 
-  // AUTO REFRESH
-  useEffect(() => {
-    loadBlocks();
-    const interval = setInterval(() => {
-      loadBlocks();
-    }, 10000); // Refresh every 10 seconds
 
-    return () => clearInterval(interval);
-  }, [currentPage]);
+  // AUTO REFRESH with AbortController to cancel pending requests
+  const loadBlocks = useCallback(async (signal) => {
+
+  try {
+    setLoading(true);
+    setError("");
+
+    // ✅ FIXED: Use correct endpoint /api/log/blocks
+    const token = localStorage.getItem("token");
+
+    if (!token) {
+  setBlocks([]);
+  return;
+    }
+    
+const response = await fetch(
+  "http://localhost:5000/api/log/blocks?page=1&limit=100",
+  {
+    signal,
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  }
+);
+
+    if (!response.ok) {
+      throw new Error("Failed to load blocks");
+    }
+
+    const data = await response.json();
+    console.log("API RESPONSE:", data); // 🔍 debug
+
+    // ✅ Backend returns { blockchain: [...] } from /api/log/blocks
+const logs =
+  data?.blocks ||
+  data?.blockchain ||
+  data?.data?.blocks ||
+  data?.data ||
+  data?.logs ||
+  [];
+    console.log("API RESPONSE:", data);
+console.log("LOGS:", logs);
+    setBlocks(logs);
+    if (logs.length > 0) {
+  setSelectedBlock(logs[logs.length - 1]);
+}
+  } catch (err) {
+    if (err.name !== "AbortError") {
+      console.error("Error fetching blocks:", err);
+      setError(err.message || "Error fetching blocks");
+    }
+  } finally {
+    setLoading(false);
+  }
+}, []);
+  useEffect(() => {
+    // Create abort controller for this effect
+    const controller = new AbortController();
+
+    // Load blocks immediately on mount
+    loadBlocks(controller.signal);
+
+    // Cleanup: cancel requests when component unmounts
+    return () => controller.abort();
+}, []);
 
   // Setup scroll animations after blocks load
   useEffect(() => {
@@ -61,28 +118,6 @@ function Dashboard() {
       ".scroll-animate, .stat-card, .card, .blocks-table"
     );
     animatableElements.forEach((el) => observer.observe(el));
-  };
-
-  const loadBlocks = async () => {
-    setLoading(true);
-    setError("");
-
-    try {
-      const response = await blockchainAPI.getAllBlocks(currentPage, 100);
-
-      if (!response.success) {
-        setError("Failed to load blocks");
-        return;
-      }
-
-      const chain = response.data.blockchain || [];
-      setBlocks(chain);
-    } catch (err) {
-      console.error("Error fetching blocks:", err);
-      setError("Error fetching blocks");
-    } finally {
-      setLoading(false);
-    }
   };
 
   const totalBlocks = blocks.length;
@@ -152,10 +187,11 @@ function Dashboard() {
     </div>
   );
 
+  console.log("BLOCKS STATE:", blocks);
+  console.log("SELECTED BLOCK:", selectedBlock);
   return (
     <div className="container" ref={containerRef}>
       <h1>Blockchain Dashboard</h1>
-
       {error && <div className="error-message">{error}</div>}
 
       {suspiciousCount > 0 && (
@@ -197,6 +233,39 @@ function Dashboard() {
         )}
       </div>
 
+      {/* ON-CHAIN AUDIT LOGS */}
+      <div className="card scroll-animate">
+        <h3>🦊 On-Chain Audit Logs</h3>
+      <p><strong>Blockchain:</strong> Backend Controlled ✅</p>
+
+        {scLogs.length > 0 && (
+          <div className="blocks-table">
+            <table>
+              <thead>
+                <tr>
+                  <th>Index</th>
+                  <th>Hash</th>
+                  <th>User</th>
+                  <th>Action</th>
+                  <th>Timestamp</th>
+                </tr>
+              </thead>
+              <tbody>
+                {scLogs.slice(0, 10).map((log, index) => (
+                  <tr key={log.id || index}>
+                    <td>{log.index != null ? log.index : index}</td>
+                    <td>{log.hash || log.message || "N/A"}</td>
+                    <td>{log.user || "N/A"}</td>
+                    <td>{log.action || "N/A"}</td>
+                    <td>{log.timestamp ? new Date(Number(log.timestamp) * 1000).toLocaleString() : "N/A"}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
       {/* BLOCKCHAIN VISUALIZATION */}
       <div className="card scroll-animate">
         <h3>⛓️ Blockchain Visualization</h3>
@@ -208,7 +277,10 @@ function Dashboard() {
               <div key={block._id} className="chain-item">
                 <div
                   className={`chain-block ${selectedBlock?._id === block._id ? "active-block" : ""}`}
-                  onClick={() => setSelectedBlock(block)}
+                  onClick={() => {
+  console.log("CLICKED BLOCK:", block);
+  setSelectedBlock({...block});
+}} 
                   style={{ cursor: "pointer" }}
                 >
                   #{block.index}
@@ -222,21 +294,55 @@ function Dashboard() {
       </div>
 
       {/* BLOCK DETAILS */}
-      {selectedBlock && (
-        <div className="card scroll-animate">
-          <h3>Block Details</h3>
-          <div className="block-details">
-            <p><strong>Index:</strong> {selectedBlock.index}</p>
-            <p><strong>Log ID:</strong> <code>{selectedBlock.logId}</code></p>
-            <p><strong>User:</strong> {selectedBlock.user}</p>
-            <p><strong>Action:</strong> {selectedBlock.action}</p>
-            <p><strong>IP Address:</strong> {selectedBlock.ipAddress}</p>
-            <p><strong>Timestamp:</strong> {new Date(selectedBlock.timestamp).toLocaleString()}</p>
-            <p><strong>Hash:</strong> <code style={{ wordBreak: "break-all" }}>{selectedBlock.hash}</code></p>
-            <p><strong>Previous Hash:</strong> <code style={{ wordBreak: "break-all" }}>{selectedBlock.previousHash}</code></p>
-          </div>
-        </div>
-      )}
+      {selectedBlock ? (
+  <div className="card scroll-animate">
+    <h3>📦 Selected Block Details</h3>
+
+    <div className="selected-block-details">
+      <p>
+        <strong>Index:</strong> {selectedBlock.index}
+      </p>
+
+      <p>
+        <strong>Log ID:</strong>
+        <code>{selectedBlock.logId}</code>
+      </p>
+
+      <p>
+        <strong>User:</strong> {selectedBlock.user}
+      </p>
+
+      <p>
+        <strong>Action:</strong> {selectedBlock.action}
+      </p>
+
+      <p>
+        <strong>IP Address:</strong> {selectedBlock.ipAddress || "N/A"}
+      </p>
+
+      <p>
+        <strong>Timestamp:</strong>{" "}
+        {selectedBlock.timestamp
+          ? new Date(selectedBlock.timestamp).toLocaleString()
+          : "N/A"}
+      </p>
+
+      <p>
+        <strong>Hash:</strong>
+        <code>{selectedBlock.hash}</code>
+      </p>
+
+      <p>
+        <strong>Previous Hash:</strong>
+        <code>{selectedBlock.previousHash}</code>
+      </p>
+    </div>
+  </div>
+) : (
+  <div className="card">
+    <h3>Select a block to view details</h3>
+  </div>
+)}
 
       {/* RECENT BLOCKS TABLE */}
       <div className="card scroll-animate">
@@ -278,15 +384,27 @@ function Dashboard() {
       </div>
 
       {/* ACTIONS */}
-      <div className="card scroll-animate">
-        <button onClick={downloadReport} className="btn-primary">
-          📥 Download PDF Report
-        </button>
-        <button onClick={loadBlocks} className="btn-secondary" style={{ marginLeft: "10px" }}>
-          🔄 Refresh
-        </button>
-      </div>
-    </div>
+     <div
+  className="card scroll-animate"
+  style={{
+    display: "flex",
+    justifyContent: "center",
+    alignItems: "center",
+    gap: "12px",
+  }}
+>
+  <button onClick={downloadReport} className="btn-primary">
+    📥 Download PDF Report
+  </button>
+
+  <button
+    onClick={() => loadBlocks(new AbortController().signal)}
+    className="btn-secondary"
+  >
+    🔄 Refresh
+  </button>
+</div>
+</div>
   );
 }
 

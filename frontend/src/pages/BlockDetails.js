@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { blockchainAPI } from "../api/apiClient";
 
@@ -16,24 +16,10 @@ function BlockDetails() {
   const [error, setError] = useState("");
   const containerRef = useRef(null);
 
-  useEffect(() => {
-    loadBlock();
-    setupScrollAnimations();
-  }, [id]);
-
-  // Setup animations after block loads
-  useEffect(() => {
-    if (block) {
-      setTimeout(() => {
-        setupScrollAnimations();
-      }, 50);
-    }
-  }, [block]);
-
   /**
    * Sets up Intersection Observer for scroll animations
    */
-  const setupScrollAnimations = () => {
+  const setupScrollAnimations = useCallback(() => {
     if (!containerRef.current) return;
 
     const observerOptions = {
@@ -52,9 +38,9 @@ function BlockDetails() {
 
     const animatableElements = containerRef.current.querySelectorAll(".scroll-animate, .card");
     animatableElements.forEach((el) => observer.observe(el));
-  };
+  }, []);
 
-  const loadBlock = async () => {
+  const loadBlock = useCallback(async () => {
     setLoading(true);
     setError("");
 
@@ -73,7 +59,21 @@ function BlockDetails() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [id]);
+
+  useEffect(() => {
+    loadBlock();
+    setupScrollAnimations();
+  }, [id, loadBlock, setupScrollAnimations]);
+
+  // Setup animations after block loads
+  useEffect(() => {
+    if (block) {
+      setTimeout(() => {
+        setupScrollAnimations();
+      }, 50);
+    }
+  }, [block, setupScrollAnimations]);
 
   const copyToClipboard = (text) => {
     navigator.clipboard.writeText(text);

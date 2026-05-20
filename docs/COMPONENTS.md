@@ -1,6 +1,7 @@
 # Component Documentation
 
 ## Overview
+
 This document provides comprehensive details about all components in the Blockchain Audit Log System and their features.
 
 ---
@@ -8,9 +9,11 @@ This document provides comprehensive details about all components in the Blockch
 ## Pages Overview
 
 ### 1. **Login Page** (`/login`)
+
 **Purpose**: User authentication and session management
 
 **Features**:
+
 - Secure username/password authentication
 - Error handling and validation
 - Demo credentials display
@@ -18,10 +21,12 @@ This document provides comprehensive details about all components in the Blockch
 - Scroll animations on load
 
 **Components Used**:
+
 - `AuthContext` for session management
 - `authAPI.login()` for authentication
 
 **Key Functionality**:
+
 ```javascript
 - Validates empty fields
 - Communicates with backend auth API
@@ -30,15 +35,18 @@ This document provides comprehensive details about all components in the Blockch
 ```
 
 **Tech Stack**:
+
 - React Hooks (useState, useContext, useRef, useEffect)
 - Intersection Observer API for animations
 
 ---
 
 ### 2. **Dashboard Page** (`/`)
+
 **Purpose**: Real-time blockchain overview and status monitoring
 
 **Features**:
+
 - Live blockchain statistics (total blocks, suspicious activities, high-risk alerts)
 - Blockchain visualization with chain representation
 - Selected block detail view
@@ -48,29 +56,34 @@ This document provides comprehensive details about all components in the Blockch
 - Scroll animations for all sections
 
 **Key Metrics**:
+
 | Metric | Description |
-|--------|-------------|
+|--------|-------------|-
 | Total Blocks | Complete count of all blockchain blocks |
 | Suspicious Activities | Blocks with <5 second timing |
 | High Risk Alerts | Blocks with <3 second timing by same user |
 | Latest Block | Most recent block index |
 
 **Risk Detection Algorithm**:
+
 - Compares timestamp differences between consecutive blocks from same user
 - ≤ 3 seconds = HIGH RISK 🔴
 - ≤ 5 seconds = SUSPICIOUS 🟡
 - &gt; 5 seconds = NORMAL ✅
 
 **Dependencies**:
+
 - `jsPDF` and `jspdf-autotable` for PDF generation
 - `blockchainAPI.getAllBlocks()` for data fetching
 
 ---
 
 ### 3. **Analytics Page** (`/analytics`)
+
 **Purpose**: Statistical analysis of blockchain activities
 
 **Features**:
+
 - Total blocks count
 - Unique users and actions count
 - Average blocks per day
@@ -82,6 +95,7 @@ This document provides comprehensive details about all components in the Blockch
 - Scroll animations
 
 **Analytics Calculations**:
+
 ```javascript
 - Unique Users: Count of distinct user values
 - Unique Actions: Count of distinct action types
@@ -92,14 +106,17 @@ This document provides comprehensive details about all components in the Blockch
 ```
 
 **API Calls**:
+
 - `blockchainAPI.getAllBlocks(1, 1000)` - Fetch all blocks
 
 ---
 
 ### 4. **Add Block Page** (`/add-block`)
+
 **Purpose**: Create new audit log entries (Admin only)
 
 **Features**:
+
 - Admin-only access control
 - Action input field
 - User input field
@@ -109,6 +126,7 @@ This document provides comprehensive details about all components in the Blockch
 - Scroll animations
 
 **Access Control**:
+
 ```javascript
 if (user?.role !== "admin") {
   // Show access denied message
@@ -116,6 +134,7 @@ if (user?.role !== "admin") {
 ```
 
 **Block Creation**:
+
 1. Validates both fields are not empty
 2. Checks user is admin
 3. Calls `blockchainAPI.addLog(action, blockUser)`
@@ -123,6 +142,7 @@ if (user?.role !== "admin") {
 5. Auto-clears form on success
 
 **Validation**:
+
 - Action: max 200 characters
 - User: max 100 characters
 - Both fields required
@@ -130,9 +150,11 @@ if (user?.role !== "admin") {
 ---
 
 ### 5. **Verify Page** (`/verify`)
+
 **Purpose**: Blockchain integrity verification and tamper detection
 
 **Features**:
+
 - Full blockchain verification
 - Hash validation
 - Previous hash linkage checking
@@ -143,8 +165,8 @@ if (user?.role !== "admin") {
 - Scroll animations
 
 **Verification Process**:
-```
-1. Verify Genesis Block (previousHash = "0")
+
+```1. Verify Genesis Block (previousHash = "0")
 2. For each block:
    - Recalculate hash
    - Compare with stored hash
@@ -153,12 +175,14 @@ if (user?.role !== "admin") {
 ```
 
 **Output**:
+
 - Status: "✅ Valid" or "❌ Tampered"
 - Total blocks checked
 - Tampering detection (which block)
 - Chain break location
 
 **Technical Details**:
+
 - Uses SHA-256 hashing
 - Cryptographic verification
 - Full-chain validation
@@ -166,9 +190,11 @@ if (user?.role !== "admin") {
 ---
 
 ### 6. **Block Details Page** (`/block/:id`)
+
 **Purpose**: Detailed view of a single block
 
 **Features**:
+
 - Complete block information display
 - Hash and previous hash with copy functionality
 - Timestamp analysis
@@ -179,8 +205,8 @@ if (user?.role !== "admin") {
 - Scroll animations
 
 **Displayed Information**:
-```
-- Index: Position in blockchain
+
+```- Index: Position in blockchain
 - Log ID: Unique identifier
 - User: User who performed action
 - Action: Type of action
@@ -191,6 +217,7 @@ if (user?.role !== "admin") {
 ```
 
 **Copy to Clipboard**:
+
 ```javascript
 const copyToClipboard = (text) => {
   navigator.clipboard.writeText(text);
@@ -201,9 +228,11 @@ const copyToClipboard = (text) => {
 ---
 
 ### 7. **Risk Monitor Page** (`/risk-monitor`)
+
 **Purpose**: Real-time detection and monitoring of suspicious activities
 
 **Features**:
+
 - Real-time risk assessment
 - High-risk block detection
 - Suspicious activity identification
@@ -214,19 +243,22 @@ const copyToClipboard = (text) => {
 - Scroll animations
 
 **Risk Levels**:
+
 | Risk Level | Criteria | Indicator |
-|-----------|----------|-----------|
+|-----------|----------|-----------|-
 | HIGH | <3 sec between same user actions | 🔴 |
 | MEDIUM | 3-5 sec between same user actions | 🟡 |
 | SAFE | >5 sec or different users | ✅ |
 
 **Critical Status**:
+
 - 🚨 CRITICAL: >5 high-risk blocks
 - ⚠️ HIGH RISK: 1-5 high-risk blocks
 - 🟡 SUSPICIOUS: Only medium-risk blocks
 - ✅ SAFE: No risks detected
 
 **Features**:
+
 - Sortable tables
 - Click to view risk details
 - Comparative block analysis
@@ -235,9 +267,11 @@ const copyToClipboard = (text) => {
 ---
 
 ### 8. **User Management Page** (`/user-management`)
-**Purpose**: Admin user and role management
+
+  **Purpose**: Admin user and role management
 
 **Features**:
+
 - Create new users with roles
 - List all users
 - Delete users
@@ -249,18 +283,20 @@ const copyToClipboard = (text) => {
 
 **Roles**:
 | Role | Permissions |
-|------|------------|
+|------|------------|-
 | **Viewer** 👁️ | View dashboard, View blocks |
 | **Auditor** 📋 | View blocks, Verify blockchain, Generate reports |
 | **Admin** ⚙️ | Add blocks, Manage users, Full access |
 
 **Password Requirements**:
+
 - Minimum 6 characters
 - At least 1 uppercase letter (A-Z)
 - At least 1 lowercase letter (a-z)
 - At least 1 number (0-9)
 
 **User Creation**:
+
 ```javascript
 - Validate both username and password
 - Check password meets requirements
@@ -274,7 +310,9 @@ const copyToClipboard = (text) => {
 ## Shared Components
 
 ### **Navbar Component** (`src/components/Navbar.js`)
+
 **Features**:
+
 - Navigation menu
 - User authentication status
 - Logout functionality
@@ -286,9 +324,11 @@ const copyToClipboard = (text) => {
 ## Context & State Management
 
 ### **AuthContext** (`src/context/AuthContext.js`)
-**Purpose**: Global authentication state management
+  
+  **Purpose**: Global authentication state management
 
 **Features**:
+
 - User session storage
 - JWT token management
 - Login/logout functionality
@@ -296,6 +336,7 @@ const copyToClipboard = (text) => {
 - User data persistence
 
 **State**:
+
 ```javascript
 {
   user: {
@@ -313,9 +354,11 @@ const copyToClipboard = (text) => {
 ## API Client
 
 ### **apiClient.js** (`src/api/apiClient.js`)
-**Purpose**: Centralized API communication
+
+  **Purpose**: Centralized API communication
 
 **Methods**:
+
 ```javascript
 // Auth
 authAPI.login(username, password)
@@ -335,18 +378,21 @@ blockchainAPI.verifyBlockchain()
 ## UI/UX Features
 
 ### **Scroll Animations** ✨
+
 - All pages include smooth scroll-triggered animations
 - Elements slide in from bottom, left, and right
 - Intersection Observer API for performance
 - See [SCROLL_ANIMATIONS.md](/SCROLL_ANIMATIONS.md) for detailed docs
 
 ### **Error Handling**
+
 ```javascript
 // Consistent error display
 {error && <div className="error-message">{error}</div>}
 ```
 
 ### **Loading States**
+
 ```javascript
 {loading ? (
   <p>🔄 Loading...</p>
@@ -356,6 +402,7 @@ blockchainAPI.verifyBlockchain()
 ```
 
 ### **Success Messaging**
+
 ```javascript
 {message && <div className="success-message">{message}</div>}
 ```
@@ -365,16 +412,19 @@ blockchainAPI.verifyBlockchain()
 ## Animation Effects
 
 ### **Fade In**
+
 - Page load animation
 - Duration: 0.6s
 - Easing: ease-in-out
 
 ### **Scroll Animations**
+
 - Element entrance: 0.8s
 - Easing: ease-out
 - Direction: Bottom, Left, Right
 
 ### **Hover Effects**
+
 - Card elevation on hover
 - Border color changes
 - Shadow enhancement
@@ -424,8 +474,7 @@ blockchainAPI.verifyBlockchain()
 
 ## File Structure
 
-```
-frontend/src/
+```frontend/src/
 ├── pages/
 │   ├── Login.js
 │   ├── Dashboard.js

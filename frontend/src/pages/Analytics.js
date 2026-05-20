@@ -15,7 +15,7 @@ function Analytics() {
 
   useEffect(() => {
     loadAnalytics();
-  }, []);
+  },[]  );
 
   useEffect(() => {
     // Setup animations after stats are loaded
@@ -142,7 +142,7 @@ function Analytics() {
           <div className="dashboard-grid">
             <div className="stat-card scroll-animate" style={{ borderLeftColor: "#3498db" }}>
               <h4>Total Blocks</h4>
-              <p className="stat-value">{stats.totalBlocks}</p>
+              <p className="stat-value">{blocks.length}</p>
             </div>
             <div className="stat-card scroll-animate" style={{ borderLeftColor: "#2ecc71" }}>
               <h4>Unique Users</h4>
